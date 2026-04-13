@@ -7,6 +7,7 @@ from unittest import mock
 
 from visualizer_tool.cli import (
     _decode_sample,
+    _configured_libprojectm_path,
     LibProjectMWrapper,
     assemble_video,
     generate_frames,
@@ -156,6 +157,22 @@ class GenerateFramesTests(unittest.TestCase):
         with mock.patch.object(LibProjectMWrapper, "_load_libprojectm", return_value=None):
             with self.assertRaises(RuntimeError):
                 LibProjectMWrapper(width=64, height=64)
+
+    def test_reads_configured_libprojectm_path_from_env(self) -> None:
+        with mock.patch.dict("os.environ", {"VISUALIZER_TOOL_LIBPROJECTM_PATH": "/tmp/libprojectM.so"}):
+            self.assertEqual(_configured_libprojectm_path(), "/tmp/libprojectM.so")
+
+    def test_load_libprojectm_uses_configured_path(self) -> None:
+        self._lib_patch.stop()
+        with mock.patch("visualizer_tool.cli._configured_libprojectm_path", return_value="/opt/libprojectM.so"), mock.patch(
+            "visualizer_tool.cli.ctypes.CDLL",
+            return_value=object(),
+        ) as cdll_mock:
+            loaded = LibProjectMWrapper._load_libprojectm()
+
+        self.assertIsNotNone(loaded)
+        cdll_mock.assert_called_once_with("/opt/libprojectM.so")
+        self._lib_patch.start()
 
 
 if __name__ == "__main__":

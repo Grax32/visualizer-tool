@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import configparser
 import ctypes
 import ctypes.util
 import math
+import os
 import shutil
 import struct
 import subprocess
@@ -13,6 +15,27 @@ import zlib
 from pathlib import Path
 
 LIBPROJECTM_CANDIDATES = ("projectM", "libprojectM", "projectM-4")
+LIBPROJECTM_PATH_ENV = "VISUALIZER_TOOL_LIBPROJECTM_PATH"
+LIBPROJECTM_CONFIG_FILES = ("visualizer_tool.ini", ".visualizer_tool.ini")
+
+
+def _configured_libprojectm_path() -> str | None:
+    env_path = os.environ.get(LIBPROJECTM_PATH_ENV)
+    if env_path:
+        return env_path
+
+    parser = configparser.ConfigParser()
+    candidate_files = [Path.cwd() / LIBPROJECTM_CONFIG_FILES[0], Path.home() / LIBPROJECTM_CONFIG_FILES[1]]
+    existing_files = [str(path) for path in candidate_files if path.is_file()]
+    if not existing_files:
+        return None
+
+    parser.read(existing_files)
+    if parser.has_option("libprojectm", "path"):
+        configured_path = parser.get("libprojectm", "path").strip()
+        if configured_path:
+            return configured_path
+    return None
 
 
 class LibProjectMWrapper:
@@ -21,10 +44,23 @@ class LibProjectMWrapper:
         self.height = height
         self._lib = self._load_libprojectm()
         if self._lib is None:
-            raise RuntimeError("libprojectM shared library was not found")
+            raise RuntimeError(
+                "libprojectM shared library was not found. "
+                "Install libprojectM and ensure the library path is discoverable "
+                "by the dynamic linker (for example, via LD_LIBRARY_PATH on Linux, "
+                "DYLD_LIBRARY_PATH on macOS, or PATH on Windows). "
+                "You can also set VISUALIZER_TOOL_LIBPROJECTM_PATH or configure "
+                "[libprojectm] path=... in visualizer_tool.ini."
+            )
 
     @staticmethod
     def _load_libprojectm() -> ctypes.CDLL | None:
+        configured_path = _configured_libprojectm_path()
+        if configured_path:
+            try:
+                return ctypes.CDLL(configured_path)
+            except OSError:
+                pass
         for name in LIBPROJECTM_CANDIDATES:
             lib_path = ctypes.util.find_library(name)
             if lib_path:

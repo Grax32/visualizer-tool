@@ -13,6 +13,17 @@ default visual style in one command.
 - `ffmpeg` available on `PATH`
 - `libprojectM` shared library available on the system (hard requirement)
 
+If `libprojectM` is installed in a non-standard location, you can point the tool
+to it by either:
+
+- setting `VISUALIZER_TOOL_LIBPROJECTM_PATH=/absolute/path/to/libprojectM.*`
+- creating `visualizer_tool.ini` in your working directory with:
+
+```ini
+[libprojectm]
+path=/absolute/path/to/libprojectM.*
+```
+
 ## Quickstart (clean machine path)
 
 ```bash
