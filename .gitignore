@@ -39,3 +39,7 @@
 
 # debug information files
 *.dwo
+
+# Python cache artifacts
+__pycache__/
+*.pyc
