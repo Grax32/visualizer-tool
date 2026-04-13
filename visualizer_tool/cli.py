@@ -9,6 +9,8 @@ import wave
 import zlib
 from pathlib import Path
 
+LIBPROJECTM_CANDIDATES = ("projectM", "libprojectM", "projectM-4")
+
 
 class LibProjectMWrapper:
     def __init__(self, width: int, height: int, require_libprojectm: bool = False) -> None:
@@ -20,7 +22,7 @@ class LibProjectMWrapper:
 
     @staticmethod
     def _load_libprojectm() -> ctypes.CDLL | None:
-        for name in ("projectM", "libprojectM", "projectM-4"):
+        for name in LIBPROJECTM_CANDIDATES:
             lib_path = ctypes.util.find_library(name)
             if lib_path:
                 try:
@@ -91,7 +93,7 @@ def _read_audio_levels(audio_path: Path, fps: int, max_frames: int | None = None
 
         samples_per_frame = max(1, int(sample_rate / fps))
         frame_samples = 0
-        levels: list[float] = []
+        rms_levels: list[float] = []
         sample_peak = _sample_max_value(sample_width)
 
         while frame_samples < total_samples:
@@ -100,7 +102,7 @@ def _read_audio_levels(audio_path: Path, fps: int, max_frames: int | None = None
             frame_samples += read_count
 
             per_sample_bytes = sample_width * channels
-            if not chunk or per_sample_bytes <= 0:
+            if not chunk:
                 break
 
             energy = 0.0
@@ -119,14 +121,14 @@ def _read_audio_levels(audio_path: Path, fps: int, max_frames: int | None = None
                 decoded += 1
 
             if decoded == 0:
-                levels.append(0.0)
+                rms_levels.append(0.0)
             else:
-                levels.append(min(1.0, math.sqrt(energy / decoded)))
+                rms_levels.append(min(1.0, math.sqrt(energy / decoded)))
 
-            if max_frames is not None and len(levels) >= max_frames:
+            if max_frames is not None and len(rms_levels) >= max_frames:
                 break
 
-    return levels
+    return rms_levels
 
 
 def _png_chunk(chunk_type: bytes, data: bytes) -> bytes:
@@ -142,11 +144,11 @@ def _write_png(path: Path, width: int, height: int, rgb: bytes) -> None:
     signature = b"\x89PNG\r\n\x1a\n"
     ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
     stride = width * 3
-    raw = bytearray()
+    filtered_rows = bytearray()
     for row_start in range(0, len(rgb), stride):
-        raw.append(0)
-        raw.extend(rgb[row_start : row_start + stride])
-    idat = zlib.compress(bytes(raw), level=6)
+        filtered_rows.append(0)
+        filtered_rows.extend(rgb[row_start : row_start + stride])
+    idat = zlib.compress(bytes(filtered_rows), level=6)
     png = signature
     png += _png_chunk(b"IHDR", ihdr)
     png += _png_chunk(b"IDAT", idat)
