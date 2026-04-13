@@ -1,3 +1,6 @@
+# Virtual environment
+.venv/
+
 # Prerequisites
 *.d
 
@@ -43,3 +46,8 @@
 # Python cache artifacts
 __pycache__/
 *.pyc
+
+
+# outputs
+output.mp4
+output/
