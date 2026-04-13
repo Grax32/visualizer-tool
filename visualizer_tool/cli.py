@@ -4,7 +4,10 @@ import argparse
 import ctypes
 import ctypes.util
 import math
+import shutil
 import struct
+import subprocess
+import tempfile
 import wave
 import zlib
 from pathlib import Path
@@ -13,11 +16,11 @@ LIBPROJECTM_CANDIDATES = ("projectM", "libprojectM", "projectM-4")
 
 
 class LibProjectMWrapper:
-    def __init__(self, width: int, height: int, require_libprojectm: bool = False) -> None:
+    def __init__(self, width: int, height: int) -> None:
         self.width = width
         self.height = height
         self._lib = self._load_libprojectm()
-        if require_libprojectm and self._lib is None:
+        if self._lib is None:
             raise RuntimeError("libprojectM shared library was not found")
 
     @staticmethod
@@ -164,7 +167,6 @@ def generate_frames(
     height: int = 720,
     prefix: str = "frame_",
     max_frames: int | None = None,
-    require_libprojectm: bool = False,
 ) -> int:
     if fps <= 0:
         raise ValueError("fps must be a positive integer")
@@ -175,7 +177,7 @@ def generate_frames(
 
     levels = _read_audio_levels(audio_path, fps=fps, max_frames=max_frames)
     output_dir.mkdir(parents=True, exist_ok=True)
-    renderer = LibProjectMWrapper(width=width, height=height, require_libprojectm=require_libprojectm)
+    renderer = LibProjectMWrapper(width=width, height=height)
 
     for index, level in enumerate(levels):
         frame_name = f"{prefix}{index:06d}.png"
@@ -186,36 +188,127 @@ def generate_frames(
     return len(levels)
 
 
+def assemble_video(
+    frames_dir: Path,
+    output_video: Path,
+    fps: int = 30,
+    prefix: str = "frame_",
+    cleanup_frames: bool = False,
+) -> None:
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path is None:
+        raise RuntimeError(
+            "ffmpeg was not found on PATH. Install ffmpeg and re-run this command."
+        )
+
+    output_video.parent.mkdir(parents=True, exist_ok=True)
+    frame_pattern = str(frames_dir / f"{prefix}%06d.png")
+    cmd = [
+        ffmpeg_path,
+        "-y",
+        "-framerate",
+        str(fps),
+        "-i",
+        frame_pattern,
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        str(output_video),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or "unknown ffmpeg error"
+        raise RuntimeError(f"ffmpeg failed while creating video: {stderr}")
+
+    if cleanup_frames:
+        for frame in frames_dir.glob(f"{prefix}*.png"):
+            frame.unlink()
+        frames_dir.rmdir()
+
+
+def generate_visualization_video(
+    audio_path: Path,
+    output_video: Path,
+    fps: int = 30,
+    width: int = 1280,
+    height: int = 720,
+    prefix: str = "frame_",
+    max_frames: int | None = None,
+    keep_frames: bool = False,
+    frames_dir: Path | None = None,
+) -> int:
+    if frames_dir is None:
+        temp_dir = Path(
+            tempfile.mkdtemp(prefix=f"{output_video.stem}_frames_", dir=str(output_video.parent or Path(".")))
+        )
+    else:
+        temp_dir = frames_dir
+
+    frame_count = generate_frames(
+        audio_path=audio_path,
+        output_dir=temp_dir,
+        fps=fps,
+        width=width,
+        height=height,
+        prefix=prefix,
+        max_frames=max_frames,
+    )
+    if frame_count == 0:
+        raise RuntimeError("No frames were generated from the input WAV file.")
+
+    assemble_video(
+        frames_dir=temp_dir,
+        output_video=output_video,
+        fps=fps,
+        prefix=prefix,
+        cleanup_frames=not keep_frames and frames_dir is None,
+    )
+    return frame_count
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Render PNG frame sequence from a WAV file using a libprojectm-style wrapper."
+        description="Generate a visualization MP4 video from a WAV file."
     )
     parser.add_argument("audio_file", type=Path, help="Path to input WAV audio file")
-    parser.add_argument("output_dir", type=Path, help="Directory where PNG frames are written")
+    parser.add_argument("output_video", type=Path, help="Path to output MP4 video file")
     parser.add_argument("--fps", type=int, default=30, help="Frames per second")
     parser.add_argument("--width", type=int, default=1280, help="Output frame width")
     parser.add_argument("--height", type=int, default=720, help="Output frame height")
-    parser.add_argument("--prefix", type=str, default="frame_", help="Frame file prefix")
+    parser.add_argument("--prefix", type=str, default="frame_", help="Frame file prefix (advanced)")
     parser.add_argument("--max-frames", type=int, default=None, help="Optional cap on generated frame count")
     parser.add_argument(
-        "--require-libprojectm",
+        "--frames-dir",
+        type=Path,
+        default=None,
+        help="Optional directory for intermediate PNG frames (defaults to temporary directory)",
+    )
+    parser.add_argument(
+        "--keep-frames",
         action="store_true",
-        help="Fail if libprojectM cannot be loaded from the system",
+        help="Keep generated frame PNGs when a temporary frame directory is used",
     )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    frame_count = generate_frames(
-        audio_path=args.audio_file,
-        output_dir=args.output_dir,
-        fps=args.fps,
-        width=args.width,
-        height=args.height,
-        prefix=args.prefix,
-        max_frames=args.max_frames,
-        require_libprojectm=args.require_libprojectm,
-    )
-    print(f"Generated {frame_count} frame(s) in {args.output_dir}")
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        frame_count = generate_visualization_video(
+            audio_path=args.audio_file,
+            output_video=args.output_video,
+            fps=args.fps,
+            width=args.width,
+            height=args.height,
+            prefix=args.prefix,
+            max_frames=args.max_frames,
+            keep_frames=args.keep_frames,
+            frames_dir=args.frames_dir,
+        )
+    except (ValueError, RuntimeError, wave.Error) as err:
+        parser.exit(2, f"Error: {err}\n")
+
+    print(f"Generated {frame_count} frame(s) and wrote video: {args.output_video}")
     return 0
