@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Butterchurn HTML Visualizer</title>
+  </head>
+  <body>
+    <main class="app-shell" aria-label="Butterchurn MP3 visualizer">
+      <canvas id="visualizer-canvas" aria-label="Audio visualization canvas"></canvas>
+
+      <section class="controls" aria-label="Visualizer controls">
+        <div class="brand-row">
+          <div>
+            <p class="eyebrow">Local MP3 player</p>
+            <h1>Butterchurn Visualizer</h1>
+          </div>
+          <span id="status" class="status-pill">Choose audio</span>
+        </div>
+
+        <label class="file-picker">
+          <span>Audio file</span>
+          <input id="file-input" type="file" accept="audio/mpeg,audio/mp3,audio/*" />
+        </label>
+
+        <div class="transport-row">
+          <button id="start-button" type="button">Start visualizer</button>
+          <button id="prev-button" type="button" disabled>Previous</button>
+          <button id="next-button" type="button" disabled>Next preset</button>
+          <button id="random-button" type="button" disabled>Random</button>
+        </div>
+
+        <label class="preset-select-label">
+          <span>Preset</span>
+          <select id="preset-select" disabled>
+            <option>Start to load bundled presets</option>
+          </select>
+        </label>
+
+        <label class="range-label">
+          <span>Transition seconds</span>
+          <input id="transition-input" type="range" min="0" max="8" step="0.1" value="2.7" />
+          <output id="transition-output">2.7s</output>
+        </label>
+
+        <audio id="audio" controls preload="metadata"></audio>
+
+        <p class="hint">
+          Pick a local audio file, then click start. Butterchurn and presets are
+          bundled by the build; no audio or presets are loaded from a remote URL at runtime.
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
