@@ -1,0 +1,212 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: #02030a;
+  color: #f8fbff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+audio {
+  font: inherit;
+}
+
+.app-shell {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(62, 84, 255, 0.22), transparent 36rem),
+    radial-gradient(circle at 80% 20%, rgba(255, 55, 177, 0.18), transparent 32rem),
+    #02030a;
+}
+
+#visualizer-canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+.controls {
+  position: fixed;
+  z-index: 2;
+  top: 1rem;
+  left: 1rem;
+  width: min(42rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 1.25rem;
+  background: rgba(6, 8, 20, 0.76);
+  box-shadow: 0 1.5rem 5rem rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(18px);
+}
+
+.brand-row,
+.transport-row,
+.range-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-row {
+  justify-content: space-between;
+  margin-bottom: 0.875rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.125rem;
+  color: #9fb3ff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.6vw, 2rem);
+  line-height: 1.05;
+}
+
+.status-pill {
+  max-width: 16rem;
+  overflow: hidden;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid rgba(142, 238, 255, 0.35);
+  border-radius: 999px;
+  color: #c8f7ff;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(39, 202, 255, 0.12);
+}
+
+.file-picker,
+.preset-select-label,
+.range-label {
+  display: grid;
+  gap: 0.38rem;
+  margin-top: 0.7rem;
+  color: #cbd5ff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.file-picker input,
+.preset-select-label select {
+  width: 100%;
+  min-height: 2.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.7rem;
+  color: #f8fbff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.file-picker input {
+  padding: 0.5rem;
+}
+
+.preset-select-label select {
+  padding: 0 0.65rem;
+}
+
+.transport-row {
+  flex-wrap: wrap;
+  margin-top: 0.85rem;
+}
+
+button {
+  min-height: 2.35rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  color: #071022;
+  font-weight: 800;
+  cursor: pointer;
+  background: linear-gradient(135deg, #75f6ff, #d582ff 54%, #ffdb70);
+  box-shadow: 0 0.8rem 1.75rem rgba(117, 246, 255, 0.16);
+}
+
+button:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.range-label {
+  grid-template-columns: max-content 1fr max-content;
+}
+
+.range-label span {
+  grid-column: 1 / -1;
+}
+
+.range-label input {
+  accent-color: #75f6ff;
+}
+
+.range-label output {
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+audio {
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.hint {
+  margin: 0.75rem 0 0;
+  color: rgba(248, 251, 255, 0.72);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  html,
+  body {
+    overflow: auto;
+  }
+
+  .controls {
+    position: absolute;
+  }
+
+  .brand-row,
+  .range-label {
+    align-items: stretch;
+  }
+
+  .brand-row {
+    flex-direction: column;
+  }
+
+  .range-label {
+    grid-template-columns: 1fr max-content;
+  }
+
+  .range-label span {
+    grid-column: 1 / -1;
+  }
+}
